@@ -1,0 +1,10 @@
+﻿displayName: API Key Redis Middleware
+type: middleware
+
+import: https://github.com/dtomlinson91/traefik-api-key-redis-middleware
+
+summary: "Lookup API keys in Redis"
+
+testData:
+  redisHost: "localhost:6379"
+  redisUser: "user"

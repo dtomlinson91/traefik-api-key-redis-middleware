@@ -37,14 +37,15 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	if config.RedisHost == nil {
 		return nil, fmt.Errorf("RedisHost is required")
 	}
-	// if config.RedisUser == nil {
-	// 	return nil, fmt.Errorf("RedisUser is required")
-	// }
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     *config.RedisHost,
-		Username: *config.RedisUser,
-	})
+	options := &redis.Options{
+		Addr: *config.RedisHost,
+	}
+	if config.RedisUser != nil {
+		options.Username = *config.RedisUser
+	}
+
+	redisClient := redis.NewClient(options)
 
 	return &ApiKeyRedis{
 		next:        next,

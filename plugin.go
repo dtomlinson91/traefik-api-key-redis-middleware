@@ -56,7 +56,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 }
 
 func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
+	ctx := context.Background()
 	var bearerToken string
 
 	apiHeader := req.Header.Get("X-API-KEY")

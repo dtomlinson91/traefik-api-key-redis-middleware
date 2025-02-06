@@ -1,49 +1,45 @@
-//go:build linux || darwin || dragonfly || freebsd || netbsd || openbsd || solaris || illumos
-
 package pool
 
 import (
 	"errors"
 	"io"
 	"net"
-	"syscall"
 	"time"
 )
 
 var errUnexpectedRead = errors.New("unexpected read from socket")
 
 func connCheck(conn net.Conn) error {
-	// Reset previous timeout.
+	// Reset previous timeout
 	_ = conn.SetDeadline(time.Time{})
 
-	sysConn, ok := conn.(syscall.Conn)
-	if !ok {
+	// Set a very short read deadline
+	err := conn.SetReadDeadline(time.Now().Add(time.Millisecond))
+	if err != nil {
+		return err
+	}
+	defer conn.SetReadDeadline(time.Time{}) // Reset deadline
+
+	// Try to read 1 byte
+	buf := make([]byte, 1)
+	n, err := conn.Read(buf)
+
+	if err == io.EOF {
+		return io.EOF
+	}
+
+	if err, ok := err.(net.Error); ok && err.Timeout() {
+		// Timeout means the connection is still alive but has no data
 		return nil
 	}
-	rawConn, err := sysConn.SyscallConn()
+
+	if n > 0 {
+		return errUnexpectedRead
+	}
+
 	if err != nil {
 		return err
 	}
 
-	var sysErr error
-
-	if err := rawConn.Read(func(fd uintptr) bool {
-		var buf [1]byte
-		n, err := syscall.Read(int(fd), buf[:])
-		switch {
-		case n == 0 && err == nil:
-			sysErr = io.EOF
-		case n > 0:
-			sysErr = errUnexpectedRead
-		case err == syscall.EAGAIN || err == syscall.EWOULDBLOCK:
-			sysErr = nil
-		default:
-			sysErr = err
-		}
-		return true
-	}); err != nil {
-		return err
-	}
-
-	return sysErr
+	return nil
 }

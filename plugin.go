@@ -41,9 +41,9 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	options := &redis.Options{
 		Addr: *config.RedisHost,
 	}
-	if config.RedisUser != nil {
-		options.Username = *config.RedisUser
-	}
+	// if config.RedisUser != nil {
+	// 	options.Username = *config.RedisUser
+	// }
 
 	redisClient := redis.NewClient(options)
 

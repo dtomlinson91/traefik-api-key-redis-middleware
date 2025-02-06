@@ -61,13 +61,17 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	apiHeader := req.Header.Get("X-API-KEY")
 	authHeader := req.Header.Get("Authorization")
+	fmt.Printf("apiHeader %s", apiHeader)
+	fmt.Printf("authHeader %s", authHeader)
 
 	if apiHeader == "" && authHeader == "" {
+		fmt.Print("Both headers are empty")
 		http.Error(rw, "API key is not valid", http.StatusUnauthorized)
 		return
 	}
 
 	if apiHeader != "" {
+		fmt.Print("API header is empty")
 		if _, exists := a.cache[apiHeader]; exists {
 			a.next.ServeHTTP(rw, req)
 			return
@@ -75,6 +79,7 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	if authHeader != "" {
+		fmt.Print("Auth header is empty")
 		bearerMatches := a.bearerRegex.FindStringSubmatch(strings.TrimSpace(authHeader))
 		if len(bearerMatches) == 2 {
 			bearerToken = bearerMatches[1]
@@ -92,7 +97,9 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if apiToken == "" {
 		apiToken = bearerToken
 	}
+	fmt.Printf("apiToken %s", apiToken)
 	val, err := a.redisClient.Get(ctx, apiToken).Result()
+	fmt.Printf("value %s", val)
 	if err != nil {
 		http.Error(rw, "API key is not valid", http.StatusUnauthorized)
 		return

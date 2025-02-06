@@ -38,14 +38,14 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 		return nil, fmt.Errorf("RedisHost is required")
 	}
 
-	options := &redis.Options{
-		Addr: *config.RedisHost,
-	}
+	// options := &redis.Options{
+	// 	Addr: *config.RedisHost,
+	// }
 	// if config.RedisUser != nil {
 	// 	options.Username = *config.RedisUser
 	// }
 
-	redisClient := redis.NewClient(options)
+	redisClient := redis.NewClient(&redis.Options{Addr: "kraken-api-redis.kraken-api.svc.data-applications:6379", Password: "", DB: 0})
 
 	return &ApiKeyRedis{
 		next:        next,

@@ -6,9 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/mediocregopher/radix/v4"
 )
 
 type Config struct {
@@ -26,37 +25,25 @@ func CreateConfig() *Config {
 
 type ApiKeyRedis struct {
 	next        http.Handler
-	redisPool   *redis.Pool
+	redisPool   radix.Client
 	cache       map[string]string
 	cacheMutex  sync.RWMutex
 	bearerRegex *regexp.Regexp
 }
 
-func createRedisPool(redisURL string) *redis.Pool {
-	return &redis.Pool{
-		MaxIdle:     5,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(redisURL)
-		},
+func createRedisPool(ctx context.Context, redisURL string) radix.Client {
+	client, err := radix.PoolConfig{}.New(ctx, "tcp", redisURL)
+	if err != nil {
+		panic(err)
 	}
-}
-
-func lookupKey(conn redis.Conn, key string) (string, error) {
-	val, err := redis.String(conn.Do("GET", key))
-	if err == redis.ErrNil {
-		return "", err
-	} else if err != nil {
-		return "", err
-	}
-	return val, nil
+	return client
 }
 
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	if config.RedisHost == nil {
 	}
-	redisHost := "redis://kraken-api-redis.kraken-api.svc.data-applications:6379"
-	pool := createRedisPool(redisHost)
+	redisHost := "kraken-api-redis.kraken-api.svc.data-applications:6379"
+	pool := createRedisPool(ctx, redisHost)
 
 	return &ApiKeyRedis{
 		next:        next,
@@ -67,9 +54,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 }
 
 func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	conn := a.redisPool.Get()
-	defer conn.Close()
-
+	ctx := req.Context()
 	var bearerToken string
 
 	apiHeader := req.Header.Get("X-API-KEY")
@@ -106,17 +91,14 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		apiToken = bearerToken
 	}
 
-	val, err := lookupKey(conn, apiToken)
-	if err == redis.ErrNil {
+	var rkey string
+	if err := a.redisPool.Do(ctx, radix.Cmd(&rkey, "GET", apiToken)); err != nil {
 		http.Error(rw, "API key is not valid", http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		http.Error(rw, "Error when retrieving API key", http.StatusInternalServerError)
 		return
 	}
 
 	a.cacheMutex.Lock()
-	a.cache[apiToken] = val
+	a.cache[apiToken] = rkey
 	a.cacheMutex.Unlock()
 
 	a.next.ServeHTTP(rw, req)

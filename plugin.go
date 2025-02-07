@@ -32,12 +32,12 @@ type ApiKeyRedis struct {
 	bearerRegex *regexp.Regexp
 }
 
-func createRedisPool(redisURL *string) *redis.Pool {
+func createRedisPool(redisURL string) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     5,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(*redisURL)
+			return redis.DialURL(redisURL)
 		},
 	}
 }
@@ -56,7 +56,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	if config.RedisHost == nil {
 	}
 	redisHost := "redis://kraken-api-redis.kraken-api.svc.data-applications:6379"
-	pool := createRedisPool(&redisHost)
+	pool := createRedisPool(redisHost)
 
 	return &ApiKeyRedis{
 		next:        next,

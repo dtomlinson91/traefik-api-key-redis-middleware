@@ -16,7 +16,6 @@ package redis
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"time"
@@ -122,12 +121,6 @@ func (c *loggingConn) Do(commandName string, args ...interface{}) (interface{}, 
 	return reply, err
 }
 
-func (c *loggingConn) DoContext(ctx context.Context, commandName string, args ...interface{}) (interface{}, error) {
-	reply, err := DoContext(c.Conn, ctx, commandName, args...)
-	c.print("DoContext", commandName, args, reply, err)
-	return reply, err
-}
-
 func (c *loggingConn) DoWithTimeout(timeout time.Duration, commandName string, args ...interface{}) (interface{}, error) {
 	reply, err := DoWithTimeout(c.Conn, timeout, commandName, args...)
 	c.print("DoWithTimeout", commandName, args, reply, err)
@@ -143,12 +136,6 @@ func (c *loggingConn) Send(commandName string, args ...interface{}) error {
 func (c *loggingConn) Receive() (interface{}, error) {
 	reply, err := c.Conn.Receive()
 	c.print("Receive", "", nil, reply, err)
-	return reply, err
-}
-
-func (c *loggingConn) ReceiveContext(ctx context.Context) (interface{}, error) {
-	reply, err := ReceiveContext(c.Conn, ctx)
-	c.print("ReceiveContext", "", nil, reply, err)
 	return reply, err
 }
 

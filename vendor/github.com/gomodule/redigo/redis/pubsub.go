@@ -15,7 +15,6 @@
 package redis
 
 import (
-	"context"
 	"errors"
 	"time"
 )
@@ -115,13 +114,6 @@ func (c PubSubConn) Receive() interface{} {
 // override the connection's default timeout.
 func (c PubSubConn) ReceiveWithTimeout(timeout time.Duration) interface{} {
 	return c.receiveInternal(ReceiveWithTimeout(c.Conn, timeout))
-}
-
-// ReceiveContext is like Receive, but it allows termination of the receive
-// via a Context. If the call returns due to closure of the context's Done
-// channel the underlying Conn will have been closed.
-func (c PubSubConn) ReceiveContext(ctx context.Context) interface{} {
-	return c.receiveInternal(ReceiveContext(c.Conn, ctx))
 }
 
 func (c PubSubConn) receiveInternal(replyArg interface{}, errArg error) interface{} {

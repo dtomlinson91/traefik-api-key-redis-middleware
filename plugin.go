@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mediocregopher/radix/v4"
+	"github.com/mediocregopher/radix/v3"
 )
 
 type Config struct {
@@ -31,8 +31,8 @@ type ApiKeyRedis struct {
 	bearerRegex *regexp.Regexp
 }
 
-func createRedisPool(ctx context.Context, redisURL string) radix.Client {
-	client, err := radix.PoolConfig{}.New(ctx, "tcp", redisURL)
+func createRedisPool(redisURL string) radix.Client {
+	client, err := radix.NewPool("tcp", redisURL, 10)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +43,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	if config.RedisHost == nil {
 	}
 	redisHost := "kraken-api-redis.kraken-api.svc.data-applications:6379"
-	pool := createRedisPool(ctx, redisHost)
+	pool := createRedisPool(redisHost)
 
 	return &ApiKeyRedis{
 		next:        next,
@@ -54,7 +54,6 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 }
 
 func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
 	var bearerToken string
 
 	apiHeader := req.Header.Get("X-API-KEY")
@@ -92,7 +91,7 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	var rkey string
-	if err := a.redisPool.Do(ctx, radix.Cmd(&rkey, "GET", apiToken)); err != nil {
+	if err := a.redisPool.Do(radix.Cmd(&rkey, "GET", apiToken)); err != nil {
 		http.Error(rw, "API key is not valid", http.StatusUnauthorized)
 		return
 	}

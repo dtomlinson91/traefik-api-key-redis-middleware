@@ -1,13 +1,13 @@
-# github.com/mediocregopher/radix/v4 v4.1.4
-## explicit; go 1.15
-github.com/mediocregopher/radix/v4
-github.com/mediocregopher/radix/v4/internal/bytesutil
-github.com/mediocregopher/radix/v4/internal/proc
-github.com/mediocregopher/radix/v4/resp
-github.com/mediocregopher/radix/v4/resp/resp3
-github.com/mediocregopher/radix/v4/trace
+# github.com/mediocregopher/radix/v3 v3.8.1
+## explicit; go 1.13
+github.com/mediocregopher/radix/v3
+github.com/mediocregopher/radix/v3/internal/bytesutil
+github.com/mediocregopher/radix/v3/resp
+github.com/mediocregopher/radix/v3/resp/resp2
+github.com/mediocregopher/radix/v3/trace
 # github.com/stretchr/testify v1.5.1
 ## explicit; go 1.13
-# github.com/tilinna/clock v1.0.2
-## explicit; go 1.8
-github.com/tilinna/clock
+# golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898
+## explicit; go 1.11
+golang.org/x/xerrors
+golang.org/x/xerrors/internal

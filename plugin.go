@@ -39,6 +39,15 @@ type ApiKeyRedis struct {
 	bearerRegex *regexp.Regexp
 }
 
+type KeyData struct {
+	Email       string `json:"email"`
+	Owner       string `json:"owner"`
+	Team        string `json:"team"`
+	Sub_team    string `json:"sub_team"`
+	Personal    bool   `json:"personal"`
+	Environment string `json:"environment"`
+}
+
 func getKeyFromRedis(inst string, key string) (string, error) {
 	// create connection
 	conn, err := net.Dial("tcp", inst)
@@ -78,7 +87,9 @@ func getKeyFromRedis(inst string, key string) (string, error) {
 	return "", fmt.Errorf("failed to get value from Redis %s", resp)
 }
 
-func getHashFromRedis(inst string, key string) (map[string]string, error) {
+func getHashFromRedis(inst string, key string) (*KeyData, error) {
+	r := &KeyData{}
+
 	// create connection
 	conn, err := net.Dial("tcp", inst)
 	if err != nil {
@@ -114,7 +125,6 @@ func getHashFromRedis(inst string, key string) (map[string]string, error) {
 	}
 
 	// get key:value pairs
-	r := make(map[string]string)
 	for i := 0; i < count; i += 2 {
 		if _, err := reader.ReadString('\n'); err != nil {
 			return nil, fmt.Errorf("failed to read field length: %v", err)
@@ -134,8 +144,22 @@ func getHashFromRedis(inst string, key string) (map[string]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read value: %v", err)
 		}
+		value = strings.TrimSpace(value)
 
-		r[field] = strings.TrimSpace(value)
+		switch strings.ToLower(field) {
+		case "email":
+			r.Email = value
+		case "owner":
+			r.Owner = value
+		case "team":
+			r.Team = value
+		case "sub_team":
+			r.Sub_team = value
+		case "personal":
+			r.Personal = strings.ToLower(value) == "true"
+		case "environment":
+			r.Environment = value
+		}
 
 	}
 	return r, nil

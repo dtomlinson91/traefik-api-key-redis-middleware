@@ -133,6 +133,7 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	val, err := getKeyFromRedis(a.redisHost, apiToken)
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Error getting key: %v", err), http.StatusUnauthorized)
+		return
 	}
 
 	a.cacheMutex.Lock()

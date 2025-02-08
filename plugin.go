@@ -165,6 +165,13 @@ func getHashFromRedis(inst string, key string) (*KeyData, error) {
 	return r, nil
 }
 
+func sendResponse(rw http.ResponseWriter, message string, statusCode int) {
+	response := &Response{Message: message, StatusCode: statusCode}
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	rw.WriteHeader(response.StatusCode)
+	json.NewEncoder(rw).Encode(response)
+}
+
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	if config.RedisHost == nil {
 		return nil, fmt.Errorf("redis host is required")
@@ -185,17 +192,14 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	authHeader := req.Header.Get("Authorization")
 
 	if apiHeader == "" && authHeader == "" {
-		http.Error(rw, "No authentication header provided", http.StatusUnauthorized)
+		sendResponse(rw, "No authentication header provided", http.StatusUnauthorized)
 		return
 	}
 
 	if apiHeader != "" {
 		if _, exists := a.cache[apiHeader]; exists {
 			// a.next.ServeHTTP(rw, req)
-			response := Response{Message: "x-api-key is in cache", StatusCode: http.StatusOK}
-			rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-			rw.WriteHeader(response.StatusCode)
-			json.NewEncoder(rw).Encode(response)
+			sendResponse(rw, "x-api-key is in cache", http.StatusOK)
 			return
 		}
 	}
@@ -206,10 +210,7 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			bearerToken = bearerMatches[1]
 			if _, exists := a.cache[bearerToken]; exists {
 				// a.next.ServeHTTP(rw, req)
-				response := Response{Message: "bearer token is in cache", StatusCode: http.StatusOK}
-				rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-				rw.WriteHeader(response.StatusCode)
-				json.NewEncoder(rw).Encode(response)
+				sendResponse(rw, "bearer token is in cache", http.StatusOK)
 				return
 			}
 		} else {
@@ -227,15 +228,11 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	val, err := getHashFromRedis(*a.redisHost, apiToken)
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
-			// http.Error(rw, "Invalid API key", http.StatusUnauthorized)
-			response := Response{Message: "non existent api key", StatusCode: http.StatusOK}
-			rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-			rw.WriteHeader(response.StatusCode)
-			json.NewEncoder(rw).Encode(response)
+			sendResponse(rw, "Invalid API key", http.StatusUnauthorized)
 			return
 		}
 		log.Printf("Error getting key from Redis: %v", err)
-		http.Error(rw, "Server error when trying to authenticate", http.StatusInternalServerError)
+		sendResponse(rw, "Server error when trying to authenticate", http.StatusInternalServerError)
 		return
 	}
 
@@ -245,8 +242,5 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// a.next.ServeHTTP(rw, req)
 	jval, _ := json.Marshal(val)
-	response := Response{Message: fmt.Sprintf("saved api key to cache: %s", jval), StatusCode: http.StatusOK}
-	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-	rw.WriteHeader(response.StatusCode)
-	json.NewEncoder(rw).Encode(response)
+	sendResponse(rw, fmt.Sprintf("saved api key to cache: %s", jval), http.StatusOK)
 }

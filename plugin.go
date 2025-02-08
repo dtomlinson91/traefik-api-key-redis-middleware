@@ -33,7 +33,7 @@ func CreateConfig() *Config {
 
 type ApiKeyRedis struct {
 	next        http.Handler
-	redisHost   string
+	redisHost   *string
 	cache       map[string][]byte
 	cacheMutex  sync.RWMutex
 	bearerRegex *regexp.Regexp
@@ -143,11 +143,12 @@ func getHashFromRedis(inst string, key string) (map[string]string, error) {
 
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
 	if config.RedisHost == nil {
+		return nil, fmt.Errorf("redis host is required")
 	}
 
 	return &ApiKeyRedis{
 		next:        next,
-		redisHost:   *config.RedisHost,
+		redisHost:   config.RedisHost,
 		cache:       make(map[string][]byte),
 		bearerRegex: regexp.MustCompile(`^Bearer\s+(.+)$`),
 	}, nil
@@ -160,7 +161,7 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	authHeader := req.Header.Get("Authorization")
 
 	if apiHeader == "" && authHeader == "" {
-		http.Error(rw, "Invalid API key", http.StatusUnauthorized)
+		http.Error(rw, "No authentication header provided", http.StatusUnauthorized)
 		return
 	}
 
@@ -190,8 +191,8 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		apiToken = bearerToken
 	}
 
-	// val, err := getKeyFromRedis(a.redisHost, apiToken)
-	val, err := getHashFromRedis(a.redisHost, apiToken)
+	// val, err := getKeyFromRedis(*a.redisHost, apiToken)
+	val, err := getHashFromRedis(*a.redisHost, apiToken)
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
 			http.Error(rw, "Invalid API key", http.StatusUnauthorized)

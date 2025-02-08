@@ -34,7 +34,7 @@ func CreateConfig() *Config {
 type ApiKeyRedis struct {
 	next        http.Handler
 	redisHost   *string
-	cache       map[string][]byte
+	cache       map[string]string
 	cacheMutex  sync.RWMutex
 	bearerRegex *regexp.Regexp
 }
@@ -173,7 +173,7 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	return &ApiKeyRedis{
 		next:        next,
 		redisHost:   config.RedisHost,
-		cache:       make(map[string][]byte),
+		cache:       make(map[string]string),
 		bearerRegex: regexp.MustCompile(`^Bearer\s+(.+)$`),
 	}, nil
 }
@@ -191,7 +191,11 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if apiHeader != "" {
 		if _, exists := a.cache[apiHeader]; exists {
-			a.next.ServeHTTP(rw, req)
+			// a.next.ServeHTTP(rw, req)
+			response := Response{Message: "x-api-key is in cache", StatusCode: http.StatusOK}
+			rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+			rw.WriteHeader(response.StatusCode)
+			json.NewEncoder(rw).Encode(response)
 			return
 		}
 	}
@@ -201,7 +205,11 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		if len(bearerMatches) == 2 {
 			bearerToken = bearerMatches[1]
 			if _, exists := a.cache[bearerToken]; exists {
-				a.next.ServeHTTP(rw, req)
+				// a.next.ServeHTTP(rw, req)
+				response := Response{Message: "bearer token is in cache", StatusCode: http.StatusOK}
+				rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+				rw.WriteHeader(response.StatusCode)
+				json.NewEncoder(rw).Encode(response)
 				return
 			}
 		} else {
@@ -219,7 +227,11 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	val, err := getHashFromRedis(*a.redisHost, apiToken)
 	if err != nil {
 		if errors.Is(err, ErrKeyNotFound) {
-			http.Error(rw, "Invalid API key", http.StatusUnauthorized)
+			// http.Error(rw, "Invalid API key", http.StatusUnauthorized)
+			response := Response{Message: "non existent api key", StatusCode: http.StatusOK}
+			rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+			rw.WriteHeader(response.StatusCode)
+			json.NewEncoder(rw).Encode(response)
 			return
 		}
 		log.Printf("Error getting key from Redis: %v", err)
@@ -227,14 +239,14 @@ func (a *ApiKeyRedis) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jval, err := json.Marshal(val)
-	if err != nil {
-		log.Printf("Error marshalling value: %v", err)
-		http.Error(rw, "Server error when trying to authenticate", http.StatusInternalServerError)
-	}
 	a.cacheMutex.Lock()
-	a.cache[apiToken] = jval
+	a.cache[apiToken] = val.Owner
 	a.cacheMutex.Unlock()
 
-	a.next.ServeHTTP(rw, req)
+	// a.next.ServeHTTP(rw, req)
+	jval, _ := json.Marshal(val)
+	response := Response{Message: fmt.Sprintf("saved api key to cache: %s", jval), StatusCode: http.StatusOK}
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	rw.WriteHeader(response.StatusCode)
+	json.NewEncoder(rw).Encode(response)
 }
